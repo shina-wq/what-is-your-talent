@@ -3,10 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WhatIsYourTalent | Reveal</title>
+    <title>WhatIsYourTalent | Chat</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="./styles.css">
 </head>
-<body>
-    
+
+<body class="landing-body text-white antialiased">
+    <main class="min-h-screen p-2 md:p-4 flex flex-col">
+        <!-- Header -->
+        <header class="flex items-center justify-between py-4 md:py-6 px-3 md:px-6">
+            <div class="brand-mark text-sm font-semibold tracking-tight">WhatIsMyTalent</div>
+        </header>
+
+        <!-- Chat Container -->
+        <div class="flex-1 flex flex-col overflow-hidden px-3 md:px-6">
+            <!-- Messages Area -->
+            <div class="flex-1 overflow-y-auto flex flex-col gap-6 pb-6 max-w-2xl mx-auto w-full">
+                <!-- Welcome Message -->
+                <div class="chat-message">
+                    <p class="text-sm md:text-base leading-relaxed">
+                        Welcome! Let's discover your natural talents. Are you ready for the first question?
+                    </p>
+                </div>
+
+                <!-- Action Button -->
+                <div class="flex justify-end">
+                    <button
+                        class="rounded-md bg-emerald-500 px-6 md:px-8 py-3 md:py-3 text-sm md:text-base font-semibold text-black transition-all duration-200 hover:bg-emerald-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                    >
+                        Yes, I'm ready. Let's go!
+                    </button>
+                </div>
+
+                <!-- Question Message -->
+                <div class="chat-message mt-6">
+                    <p class="text-sm md:text-base leading-relaxed">
+                        Great! First question: When you are in a group setting, do you find yourself mostly observing and listening, or actively speaking and organizing others?
+                    </p>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="flex gap-3 md:gap-4 max-w-2xl mx-auto w-full pb-4 md:pb-6">
+                <input
+                    type="text"
+                    placeholder="Type your answer..."
+                    class="flex-1 rounded-md bg-zinc-800 px-4 py-3 md:py-4 text-sm text-white placeholder-zinc-500 border border-zinc-700 focus:outline-none focus:border-emerald-500 transition-colors"
+                />
+                <button
+                    class="rounded-md bg-emerald-500 px-6 md:px-8 py-3 md:py-4 text-sm md:text-base font-semibold text-black transition-all duration-200 hover:bg-emerald-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                >
+                    Send
+                </button>
+            </div>
+        </div>
+    </main>
 </body>
+
 </html>

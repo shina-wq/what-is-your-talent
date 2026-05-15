@@ -3,10 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WhatIsYourTalent | Chat</title>
+    <title>WhatIsYourTalent | Reveal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="./styles.css">
 </head>
-<body>
-    
+
+<body class="landing-body text-white antialiased">
+    <main class="min-h-screen p-2 md:p-4 flex flex-col">
+        <!-- Header -->
+        <header class="flex items-center justify-between py-4 md:py-6 px-3 md:px-6">
+            <div class="brand-mark text-sm font-semibold tracking-tight">WhatIsMyTalent</div>
+        </header>
+
+        <!-- Results Container -->
+        <div class="flex-1 flex items-center justify-center">
+            <div class="hero-shell w-full mx-4 md:mx-6 rounded-lg p-6 md:p-8">
+                <div class="text-center">
+                    <!-- Talent Label -->
+                    <p class="text-xs md:text-sm font-semibold text-emerald-400 tracking-wider uppercase mb-6">
+                        ◆ YOUR TALENT
+                    </p>
+
+                    <!-- Talent Title -->
+                    <h1 class="text-3xl md:text-5xl font-extrabold tracking-tight mb-8 leading-tight">
+                        The Strategic<br>Synthesizer
+                    </h1>
+
+                    <!-- Why Section -->
+                    <div class="mb-8 text-left">
+                        <h2 class="text-lg md:text-xl font-bold mb-3">Why</h2>
+                        <p class="text-sm md:text-base text-zinc-400 leading-relaxed">
+                            You possess a rare ability to see both the microscopic details and the macroscopic picture simultaneously. Your brain naturally seeks patterns across disparate pieces of information, allowing you to connect dots that others miss entirely.
+                        </p>
+                    </div>
+
+                    <!-- How It Shows Up Section -->
+                    <div class="mb-8 text-left">
+                        <h2 class="text-lg md:text-xl font-bold mb-3">How it shows up</h2>
+                        <p class="text-sm md:text-base text-zinc-400 leading-relaxed">
+                            In group settings, you typically observe first, gathering context before distilling complex discussions into a single, clarifying insight. You excel at creating frameworks out of chaos and guiding teams toward aligned, long-term decisions.
+                        </p>
+                    </div>
+
+                    <!-- Start Over Button -->
+                    <a
+                        href="index.html"
+                        class="inline-flex items-center justify-center rounded-md bg-emerald-500 px-8 py-3 text-base font-semibold text-black transition-all duration-200 hover:bg-emerald-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-black mt-6"
+                    >
+                        Start Over
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
 </body>
+
 </html>
