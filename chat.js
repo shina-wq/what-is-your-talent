@@ -196,7 +196,7 @@ async function generateProfile() {
     if (!jsonMatch) {
       throw new Error('No JSON object found in response');
     }
-    
+
     const profile = JSON.parse(jsonMatch[0]);
 
     // Store in sessionStorage for reveal.js to read
