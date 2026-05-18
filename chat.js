@@ -1,15 +1,18 @@
 // State
 const state = {
-  conversationHistory: [], // full history sent to Gemini on every call
-  questionCount: 0,        // tracks how many AI questions have been asked
-  isLoading: false         // prevents duplicate sends
+  conversationHistory: [],
+  exchangeCount: 0,   // counts completed user-answer exchanges
+  isLoading: false,
+  isGeneratingProfile: false // NEW: Flag to prevent any rendering during profile generation
 };
+
+const MAX_EXCHANGES = 10;
 
 // System Prompt
 const SYSTEM_PROMPT = `You are a talent discovery guide. Your job is to identify a person's natural talents through conversation.
 
-Rules:
-- Ask ONE short, thoughtful, adaptive question at a time
+CRITICAL RULES:
+- ONLY ask ONE short, thoughtful, adaptive question per response
 - Each question should build on the previous answer
 - Questions should reveal how the person thinks, what energizes them, and what comes naturally to them
 - Keep questions concise — one or two sentences max
@@ -17,13 +20,17 @@ Rules:
 - Do not explain why you're asking
 - Do not give feedback or commentary between questions, just ask the next one
 - Be warm but professional in tone
+- NEVER generate a profile unless explicitly asked in a message that says "Based on all my answers, generate my talent profile now"
 
-When asked to generate the talent profile, respond ONLY with this exact JSON shape and nothing else:
+PROFILE GENERATION ONLY:
+When you receive a message that EXPLICITLY says "Based on all my answers, generate my talent profile now in JSON format with fields: title, why, and how", then respond ONLY with this JSON shape and nothing else:
 {
   "title": "The [Adjective] [Noun]",
   "why": "2-3 sentences explaining why this is their talent based on their answers",
   "how": "2-3 sentences on how this talent shows up in their daily life and work"
-}`;
+}
+
+Until you receive that specific request, ONLY ask questions. Do not mention generating a profile, do not offer to generate a profile, just ask the next discovery question.`;
 
 // DOM References
 const messagesContainer = document.getElementById('messages-container');
@@ -31,14 +38,13 @@ const userInput = document.getElementById('user-input');
 const sendBtn = document.getElementById('send-btn');
 
 // Groq API Call
-async function callGemini(messages) {
-  // Convert Gemini format to OpenAI format for Groq
+async function callGroq(messages) {
   const groqMessages = messages.map(msg => ({
     role: msg.role === 'model' ? 'assistant' : msg.role,
     content: msg.parts[0].text
   }));
 
-  const response = await fetch(CONFIG.GEMINI_PROXY_URL, {
+  const response = await fetch(CONFIG.GROQ_PROXY_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -59,13 +65,22 @@ async function callGemini(messages) {
 }
 
 // UI Helpers
-
-// Renders a message bubble in the chat
 function renderMessage(text, role) {
+  const trimmed = text.trim();
+  
+  // Safety check: Don't render JSON-like responses
+  // Check if it starts with { and ends with } OR contains JSON object
+  if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || 
+      /^\s*\{[\s\S]*"title"[\s\S]*"why"[\s\S]*"how"[\s\S]*\}\s*$/.test(text)) {
+    console.warn('BLOCKED: Attempted to render JSON/profile as message. Stack trace:', new Error().stack);
+    console.warn('Content attempted:', text.substring(0, 150));
+    return;
+  }
+  
+  console.log(`Rendering ${role} message:`, trimmed.substring(0, 100));
+  
   const wrapper = document.createElement('div');
-  wrapper.className = role === 'user'
-    ? 'flex justify-end'
-    : 'flex justify-start';
+  wrapper.className = role === 'user' ? 'flex justify-end' : 'flex justify-start';
 
   const bubble = document.createElement('div');
   bubble.className = role === 'user'
@@ -78,7 +93,6 @@ function renderMessage(text, role) {
   scrollToBottom();
 }
 
-// Shows a typing indicator while waiting for Gemini
 function showTypingIndicator() {
   const indicator = document.createElement('div');
   indicator.id = 'typing-indicator';
@@ -100,28 +114,6 @@ function scrollToBottom() {
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-// Shows the "See Results" button after profile is generated
-function showResultsButton() {
-  const wrapper = document.createElement('div');
-  wrapper.className = 'flex justify-center py-4';
-
-  const button = document.createElement('button');
-  button.textContent = 'See Results';
-  button.className = 'bg-emerald-500 text-black rounded-2xl px-6 py-3 font-semibold hover:bg-emerald-600 transition cursor-pointer';
-  button.onclick = () => {
-    window.location.href = 'reveal.html';
-  };
-
-  wrapper.appendChild(button);
-  messagesContainer.appendChild(wrapper);
-  scrollToBottom();
-
-  // Disable input
-  userInput.disabled = true;
-  sendBtn.disabled = true;
-}
-
-// Disables input while AI is responding
 function setLoading(loading) {
   state.isLoading = loading;
   sendBtn.disabled = loading;
@@ -129,51 +121,66 @@ function setLoading(loading) {
   sendBtn.textContent = loading ? '...' : 'Send';
 }
 
-// Core Chat Flow
+function showResultsButton() {
+  // Lock input permanently
+  userInput.disabled = true;
+  sendBtn.disabled = true;
 
-// Sends a message to Gemini and renders the response
+  const wrapper = document.createElement('div');
+  wrapper.className = 'flex justify-center py-4';
+
+  const button = document.createElement('button');
+  button.textContent = 'See Your Results';
+  button.className = 'bg-emerald-500 text-black rounded-2xl px-6 py-3 font-semibold hover:bg-emerald-600 transition cursor-pointer';
+  button.onclick = () => window.location.href = 'reveal.html';
+
+  wrapper.appendChild(button);
+  messagesContainer.appendChild(wrapper);
+  scrollToBottom();
+}
+
+// Core Chat Flow
 async function sendMessage() {
   const text = userInput.value.trim();
   if (!text || state.isLoading) return;
 
-  // Render user message
   renderMessage(text, 'user');
   userInput.value = '';
 
-  // Append to history
   state.conversationHistory.push({ role: 'user', parts: [{ text }] });
+  state.exchangeCount++;
+
+  console.log(`Exchange count: ${state.exchangeCount}/${MAX_EXCHANGES}`);
 
   setLoading(true);
   showTypingIndicator();
 
   try {
-    if (state.questionCount >= 10) {
-      // All 10 questions answered — generate talent profile
-      removeTypingIndicator();
+    if (state.exchangeCount >= MAX_EXCHANGES) {
+      // Enough signal — generate the profile
+      console.log('Max exchanges reached, generating profile...');
+      state.isGeneratingProfile = true; // Set flag BEFORE generating
       await generateProfile();
-    } else {
-      // Ask the next adaptive question
-      const aiResponse = await callGemini(state.conversationHistory);
-
-      removeTypingIndicator();
-      renderMessage(aiResponse, 'ai');
-
-      // Append AI response to history
-      state.conversationHistory.push({ role: 'model', parts: [{ text: aiResponse }] });
-      state.questionCount++;
+      state.isGeneratingProfile = false; // Clear flag AFTER generating
+      return; // Explicitly return to ensure nothing else runs
     }
+    
+    // Only get AI response if NOT at max exchanges
+    const aiResponse = await callGroq(state.conversationHistory);
+    removeTypingIndicator();
+    renderMessage(aiResponse, 'ai');
+    state.conversationHistory.push({ role: 'model', parts: [{ text: aiResponse }] });
   } catch (error) {
     removeTypingIndicator();
     renderMessage('Something went wrong. Please refresh and try again.', 'ai');
-    console.error(error);
+    console.error('sendMessage error:', error);
   } finally {
     setLoading(false);
+    state.isGeneratingProfile = false;
   }
 }
 
-// Generates the final talent profile and shows results button
 async function generateProfile() {
-  // Ask Groq to generate the profile based on the full conversation
   const profileRequest = [
     ...state.conversationHistory,
     {
@@ -181,56 +188,55 @@ async function generateProfile() {
       parts: [{ text: 'Based on all my answers, generate my talent profile now in JSON format with fields: title, why, and how.' }]
     }
   ];
-
-  try {
-    const profileResponse = await callGemini(profileRequest);
-
-    // Extract JSON from response - handle various formats
-    let clean = profileResponse;
+    console.log('Calling Groq to generate profile...');
+    const profileResponse = await callGroq(profileRequest);
+    console.log('Profile response received:', profileResponse.substring(0, 100) + '...');
     
-    // Remove markdown code blocks
-    clean = clean.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+    removeTypingIndicator();
+
+    // Strip markdown fences and extract JSON
+    const clean = profileResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     
-    // Find and extract JSON object
-    const jsonMatch = clean.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('No JSON object found in response');
+    // Find JSON object - match from first { to last }
+    const firstBrace = clean.indexOf('{');
+    const lastBrace = clean.lastIndexOf('}');
+    
+    if (firstBrace === -1 || lastBrace === -1) {
+      console.error('No JSON found. Response:', clean);
+      throw new Error('No JSON found in profile response');
+    }
+    
+    const jsonString = clean.substring(firstBrace, lastBrace + 1);
+    console.log('Extracted JSON:', jsonString.substring(0, 100) + '...');
+    
+    const profile = JSON.parse(jsonString);
+
+    // Validate profile has required fields
+    if (!profile.title || !profile.why || !profile.how) {
+      throw new Error('Profile missing required fields: ' + JSON.stringify(Object.keys(profile)));
     }
 
-    const profile = JSON.parse(jsonMatch[0]);
-
-    // Store in sessionStorage for reveal.js to read
-    sessionStorage.setItem('talentProfile', JSON.stringify(profile));
-
-    // Show results message and button (typing indicator already removed)
-    renderMessage('Your talent profile is ready!', 'ai');
-    showResultsButton();
-  } catch (error) {
-    renderMessage('Could not generate your profile. Please refresh and try again.', 'ai');
-    console.error('Profile generation error:', error);
+    console.log('Profile validated successfully:', profile.title);   console.error('Profile generation error:', error);
+    renderMessage('Failed to generate profile. Please refresh and try again.', 'ai');
   }
-}
 
-// Asks the first question automatically when the page loads
+// Kick off the conversation automatically on page load
 async function initChat() {
   setLoading(true);
   showTypingIndicator();
 
   try {
-    // Seed the conversation with an opening prompt
     const openingPrompt = [{ role: 'user', parts: [{ text: 'Start the talent discovery. Ask me your first question.' }] }];
-    const firstQuestion = await callGemini(openingPrompt);
+    const firstQuestion = await callGroq(openingPrompt);
 
     removeTypingIndicator();
     renderMessage(firstQuestion, 'ai');
 
-    // Add both the seed and the response to history
+    // Seed history with the opening exchange (doesn't count toward user exchanges)
     state.conversationHistory.push(
       { role: 'user', parts: [{ text: 'Start the talent discovery. Ask me your first question.' }] },
       { role: 'model', parts: [{ text: firstQuestion }] }
     );
-
-    state.questionCount = 1;
   } catch (error) {
     removeTypingIndicator();
     renderMessage('Failed to start. Please refresh the page.', 'ai');
@@ -242,11 +248,8 @@ async function initChat() {
 
 // Event Listeners
 sendBtn.addEventListener('click', sendMessage);
-
-// Allow Enter key to send
 userInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') sendMessage();
 });
 
-// Init
 initChat();

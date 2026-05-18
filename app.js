@@ -81,7 +81,7 @@ function serveStaticFile(res, requestPath) {
 	});
 }
 
-async function handleGeminiProxy(req, res) {
+async function handleGroqProxy(req, res) {
 	const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
 	if (!GROQ_API_KEY) {
@@ -126,7 +126,7 @@ async function handleGeminiProxy(req, res) {
 }
 
 const server = http.createServer((req, res) => {
-	if (req.url === '/api/gemini' && req.method === 'OPTIONS') {
+	if (req.url === '/api/groq' && req.method === 'OPTIONS') {
 		res.writeHead(204, {
 			'Access-Control-Allow-Origin': '*',
 			'Access-Control-Allow-Headers': 'Content-Type',
@@ -136,8 +136,8 @@ const server = http.createServer((req, res) => {
 		return;
 	}
 
-	if (req.method === 'POST' && req.url === '/api/gemini') {
-		handleGeminiProxy(req, res);
+	if (req.method === 'POST' && req.url === '/api/groq') {
+		handleGroqProxy(req, res);
 		return;
 	}
 
